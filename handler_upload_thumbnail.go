@@ -1,11 +1,13 @@
 package main
 
 import (
-	"encoding/base64"
 	"fmt"
 	"io"
 	"log"
+	"mime"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	"github.com/google/uuid"
 	"github.com/thuyencode/learn-file-storage-s3-golang-starter/internal/auth"
@@ -57,9 +59,31 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	file, header, err := r.FormFile("thumbnail")
+	formFile, header, err := r.FormFile("thumbnail")
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Unable to parse form file", err)
+		return
+	}
+
+	defer func() {
+		if err := formFile.Close(); err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+		}
+	}()
+
+	mediaType := header.Header.Get("Content-Type")
+	fileExtensions, err := mime.ExtensionsByType(mediaType)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Unable to determine file extension from Content-Type header", err)
+		return
+	}
+
+	fileName := fmt.Sprintf("%s%s", videoIDString, fileExtensions[0])
+	filePath := filepath.Join(cfg.assetsRoot, fileName)
+
+	file, err := os.Create(filePath)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Unable to create a new file", err)
 		return
 	}
 
@@ -69,15 +93,13 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		}
 	}()
 
-	mediaType := header.Header.Get("Content-Type")
-	data, err := io.ReadAll(file)
+	_, err = io.Copy(file, formFile)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Unable to read file", err)
+		respondWithError(w, http.StatusInternalServerError, "Unable to write a new file", err)
 		return
 	}
 
-	base64Thumbnail := base64.StdEncoding.EncodeToString(data)
-	video.ThumbnailURL = new(fmt.Sprintf("data:%s;base64,%s", mediaType, base64Thumbnail))
+	video.ThumbnailURL = new(fmt.Sprintf("http://localhost:%s/assets/%s", cfg.port, fileName))
 
 	if err := cfg.db.UpdateVideo(video); err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Unable to update video", err)
