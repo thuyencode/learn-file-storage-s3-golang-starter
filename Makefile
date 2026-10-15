@@ -1,3 +1,5 @@
+dev:
+	air
 run:
 	go run .
 test:

@@ -20,7 +20,10 @@ const (
 	TokenTypeAccess TokenType = "tubely-access"
 )
 
-var ErrNoAuthHeaderIncluded = errors.New("no auth header included in request")
+var (
+	ErrNoAuthHeaderIncluded = errors.New("no auth header included in request")
+	ErrMalformedAuthHeader  = errors.New("malformed authorization header")
+)
 
 func HashPassword(password string) (string, error) {
 	hash, err := argon2id.CreateHash(password, argon2id.DefaultParams)
@@ -91,7 +94,7 @@ func GetBearerToken(headers http.Header) (string, error) {
 	}
 	splitAuth := strings.Split(authHeader, " ")
 	if len(splitAuth) < 2 || splitAuth[0] != "Bearer" {
-		return "", errors.New("malformed authorization header")
+		return "", ErrMalformedAuthHeader
 	}
 
 	return splitAuth[1], nil

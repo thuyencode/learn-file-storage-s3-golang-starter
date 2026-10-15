@@ -1,11 +1,15 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
 
-	"github.com/bootdotdev/learn-file-storage-s3-golang-starter/internal/auth"
 	"github.com/google/uuid"
+	"github.com/thuyencode/learn-file-storage-s3-golang-starter/internal/auth"
+	"github.com/thuyencode/learn-file-storage-s3-golang-starter/internal/database"
 )
 
 func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Request) {
@@ -28,10 +32,57 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-
-	fmt.Println("uploading thumbnail for video", videoID, "by user", userID)
+	log.Println("uploading thumbnail for video", videoID, "by user", userID)
 
 	// TODO: implement the upload here
+	const maxMemory = 10 << 20
+	if err := r.ParseMultipartForm(maxMemory); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Unable to parse multipart form", err)
+		return
+	}
 
-	respondWithJSON(w, http.StatusOK, struct{}{})
+	video, err := cfg.db.GetVideo(videoID)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+		return
+	}
+
+	if video == (database.Video{}) {
+		respondWithError(w, http.StatusNotFound, "Video ID not found", err)
+		return
+	}
+
+	if video.UserID != userID {
+		respondWithJSON(w, http.StatusUnauthorized, "Not your video")
+		return
+	}
+
+	file, header, err := r.FormFile("thumbnail")
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Unable to parse form file", err)
+		return
+	}
+
+	defer func() {
+		if err := file.Close(); err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+		}
+	}()
+
+	mediaType := header.Header.Get("Content-Type")
+	data, err := io.ReadAll(file)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Unable to read file", err)
+		return
+	}
+
+	base64Thumbnail := base64.StdEncoding.EncodeToString(data)
+	video.ThumbnailURL = new(fmt.Sprintf("data:%s;base64,%s", mediaType, base64Thumbnail))
+
+	if err := cfg.db.UpdateVideo(video); err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Unable to update video", err)
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, video)
 }
