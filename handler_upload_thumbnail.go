@@ -74,7 +74,12 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	mediaType := header.Header.Get("Content-Type")
 	fileExtensions, err := mime.ExtensionsByType(mediaType)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Unable to determine file extension from Content-Type header", err)
+		respondWithError(
+			w,
+			http.StatusBadRequest,
+			"Unable to determine file extension from Content-Type header",
+			err,
+		)
 		return
 	}
 

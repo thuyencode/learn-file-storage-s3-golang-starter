@@ -5,10 +5,9 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/thuyencode/learn-file-storage-s3-golang-starter/internal/database"
-
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
+	"github.com/thuyencode/learn-file-storage-s3-golang-starter/internal/database"
 )
 
 type apiConfig struct {

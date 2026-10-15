@@ -22,7 +22,6 @@ func NewClient(pathToDB string) (Client, error) {
 		return Client{}, err
 	}
 	return c, nil
-
 }
 
 func (c *Client) autoMigrate() error {

@@ -59,7 +59,8 @@ func (c Client) GetUserByEmail(email string) (User, error) {
 	`
 	var user User
 	var id string
-	err := c.db.QueryRow(query, email).Scan(&id, &user.CreatedAt, &user.UpdatedAt, &user.Email, &user.Password)
+	err := c.db.QueryRow(query, email).
+		Scan(&id, &user.CreatedAt, &user.UpdatedAt, &user.Email, &user.Password)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return User{}, nil
@@ -83,7 +84,8 @@ func (c Client) GetUserByRefreshToken(token string) (*User, error) {
 
 	var user User
 	var id string
-	err := c.db.QueryRow(query, token).Scan(&id, &user.Email, &user.CreatedAt, &user.UpdatedAt, &user.Password)
+	err := c.db.QueryRow(query, token).
+		Scan(&id, &user.Email, &user.CreatedAt, &user.UpdatedAt, &user.Password)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -123,7 +125,8 @@ func (c Client) GetUser(id uuid.UUID) (*User, error) {
 	`
 	var user User
 	var idStr string
-	err := c.db.QueryRow(query, id.String()).Scan(&idStr, &user.CreatedAt, &user.UpdatedAt, &user.Email, &user.Password)
+	err := c.db.QueryRow(query, id.String()).
+		Scan(&idStr, &user.CreatedAt, &user.UpdatedAt, &user.Email, &user.Password)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
