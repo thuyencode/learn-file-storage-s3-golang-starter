@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/google/uuid"
 	"github.com/thuyencode/learn-file-storage-s3-golang-starter/internal/auth"
@@ -71,7 +72,25 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		}
 	}()
 
-	mediaType := header.Header.Get("Content-Type")
+	contentTypeHeader := header.Header.Get("Content-Type")
+
+	mediaType, _, err := mime.ParseMediaType(contentTypeHeader)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, err.Error(), err)
+		return
+	}
+
+	alllowedMediaTypes := []string{"image/jpeg", "image/png"}
+	if !slices.Contains(alllowedMediaTypes, mediaType) {
+		respondWithError(
+			w,
+			http.StatusBadRequest,
+			fmt.Sprintf("The thumbnail file type must be one of %v", alllowedMediaTypes),
+			nil,
+		)
+		return
+	}
+
 	fileExtensions, err := mime.ExtensionsByType(mediaType)
 	if err != nil {
 		respondWithError(
