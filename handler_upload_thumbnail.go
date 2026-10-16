@@ -91,17 +91,7 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	fileExtensions, err := mime.ExtensionsByType(mediaType)
-	if err != nil {
-		respondWithError(
-			w,
-			http.StatusBadRequest,
-			"Unable to determine file extension from Content-Type header",
-			err,
-		)
-		return
-	}
-
+	fileExtensions, _ := mime.ExtensionsByType(mediaType)
 	fileName := fmt.Sprintf("%s%s", videoIDString, fileExtensions[0])
 	filePath := filepath.Join(cfg.assetsRoot, fileName)
 
