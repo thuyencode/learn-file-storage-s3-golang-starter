@@ -4,8 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"time"
-
-	"github.com/google/uuid"
+	"uuid"
 )
 
 type Video struct {

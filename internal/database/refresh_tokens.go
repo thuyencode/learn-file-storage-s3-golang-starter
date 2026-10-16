@@ -3,8 +3,7 @@ package database
 import (
 	"database/sql"
 	"time"
-
-	"github.com/google/uuid"
+	"uuid"
 )
 
 type RefreshToken struct {

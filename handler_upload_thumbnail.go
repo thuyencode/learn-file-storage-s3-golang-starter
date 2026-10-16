@@ -9,8 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/thuyencode/learn-file-storage-s3-golang-starter/internal/auth"
 	"github.com/thuyencode/learn-file-storage-s3-golang-starter/internal/database"
 )
