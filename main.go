@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
 
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"github.com/thuyencode/learn-file-storage-s3-golang-starter/internal/database"
@@ -19,6 +22,7 @@ type apiConfig struct {
 	s3Bucket         string
 	s3Region         string
 	s3CfDistribution string
+	s3Client         *s3.Client
 	port             string
 }
 
@@ -28,7 +32,9 @@ type thumbnail struct {
 }
 
 func main() {
-	godotenv.Load(".env")
+	if err := godotenv.Load(".env"); err != nil {
+		log.Fatal(err)
+	}
 
 	pathToDB := os.Getenv("DB_PATH")
 	if pathToDB == "" {
@@ -75,21 +81,29 @@ func main() {
 		log.Fatal("S3_CF_DISTRO environment variable is not set")
 	}
 
+	s3Cfg, err := config.LoadDefaultConfig(context.Background(), config.WithRegion(s3Region))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	s3Client := s3.NewFromConfig(s3Cfg)
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		log.Fatal("PORT environment variable is not set")
 	}
 
 	cfg := apiConfig{
-		db:               db,
-		jwtSecret:        jwtSecret,
-		platform:         platform,
-		filepathRoot:     filepathRoot,
-		assetsRoot:       assetsRoot,
-		s3Bucket:         s3Bucket,
-		s3Region:         s3Region,
-		s3CfDistribution: s3CfDistribution,
-		port:             port,
+		db,
+		jwtSecret,
+		platform,
+		filepathRoot,
+		assetsRoot,
+		s3Bucket,
+		s3Region,
+		s3CfDistribution,
+		s3Client,
+		port,
 	}
 
 	err = cfg.ensureAssetsDir()

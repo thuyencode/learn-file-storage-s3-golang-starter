@@ -39,7 +39,6 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 
 	log.Println("uploading thumbnail for video", videoID, "by user", userID)
 
-	// TODO: implement the upload here
 	const maxMemory = 10 << 20
 	if err := r.ParseMultipartForm(maxMemory); err != nil {
 		respondWithError(w, http.StatusBadRequest, "Unable to parse multipart form", err)
@@ -108,7 +107,7 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 
 	file, err := os.Create(filePath)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Unable to create a new file", err)
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
 		return
 	}
 
@@ -118,16 +117,15 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		}
 	}()
 
-	_, err = io.Copy(file, formFile)
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Unable to write a new file", err)
+	if _, err = io.Copy(file, formFile); err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
 		return
 	}
 
 	video.ThumbnailURL = new(fmt.Sprintf("http://localhost:%s/assets/%s", cfg.port, fileName))
 
 	if err := cfg.db.UpdateVideo(video); err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Unable to update video", err)
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
 		return
 	}
 
