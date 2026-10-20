@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -12,7 +13,6 @@ import (
 	"os"
 	"path"
 	"slices"
-	"strings"
 	"uuid"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -136,9 +136,9 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	aspectRatio, err := v.GetVideoAspectRatio(tempFile.Name())
+	prefix, err := v.GetVideoAspectRatio(tempFile.Name())
 	if err != nil {
-		if strings.Contains(err.Error(), "Invalid data found when processing input") {
+		if errors.Is(err, v.ErrInvalidData) {
 			respondWithError(w, http.StatusBadRequest, "Invalid file. Must be a video file.", err)
 			return
 		}
@@ -146,11 +146,12 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	s3ObjKey := new(path.Join(prefix, fileName))
 	if _, err := cfg.s3Client.PutObject(
 		context.Background(),
 		&s3.PutObjectInput{
 			Bucket:      &cfg.s3Bucket,
-			Key:         new(path.Join(aspectRatio, fileName)),
+			Key:         s3ObjKey,
 			Body:        tempFile,
 			ContentType: &contentTypeHeader,
 		},
@@ -161,11 +162,10 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 
 	video.VideoURL = new(
 		fmt.Sprintf(
-			"https://%s.s3.%s.amazonaws.com/%s/%s",
+			"https://%s.s3.%s.amazonaws.com/%s",
 			cfg.s3Bucket,
 			cfg.s3Region,
-			aspectRatio,
-			fileName,
+			*s3ObjKey,
 		),
 	)
 

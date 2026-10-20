@@ -14,6 +14,8 @@ const (
 	Other     = "other"
 )
 
+var ErrInvalidData = errors.New("invalid data found when processing input")
+
 type FFProbeResult struct {
 	Streams []struct {
 		Width  int `json:"width,omitempty"`
@@ -39,6 +41,9 @@ func GetVideoAspectRatio(filePath string) (string, error) {
 
 	if err := cmd.Run(); err != nil {
 		if errout.Len() != 0 {
+			if strings.Contains(errout.String(), "Invalid data found when processing input") {
+				return "", ErrInvalidData
+			}
 			return "", errors.New(errout.String())
 		}
 
@@ -49,6 +54,7 @@ func GetVideoAspectRatio(filePath string) (string, error) {
 	if err := json.Unmarshal(out.Bytes(), &result); err != nil {
 		return "", err
 	}
+
 	if result.Streams[0].Width > result.Streams[0].Height {
 		return Landscape, nil
 	}
