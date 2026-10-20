@@ -10,12 +10,15 @@ import (
 	"mime"
 	"net/http"
 	"os"
+	"path"
 	"slices"
+	"strings"
 	"uuid"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/thuyencode/learn-file-storage-s3-golang-starter/internal/auth"
 	"github.com/thuyencode/learn-file-storage-s3-golang-starter/internal/database"
+	v "github.com/thuyencode/learn-file-storage-s3-golang-starter/internal/video"
 )
 
 func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request) {
@@ -133,11 +136,21 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if _, err = cfg.s3Client.PutObject(
+	aspectRatio, err := v.GetVideoAspectRatio(tempFile.Name())
+	if err != nil {
+		if strings.Contains(err.Error(), "Invalid data found when processing input") {
+			respondWithError(w, http.StatusBadRequest, "Invalid file. Must be a video file.", err)
+			return
+		}
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+		return
+	}
+
+	if _, err := cfg.s3Client.PutObject(
 		context.Background(),
 		&s3.PutObjectInput{
 			Bucket:      &cfg.s3Bucket,
-			Key:         &fileName,
+			Key:         new(path.Join(aspectRatio, fileName)),
 			Body:        tempFile,
 			ContentType: &contentTypeHeader,
 		},
@@ -147,7 +160,13 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 	}
 
 	video.VideoURL = new(
-		fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", cfg.s3Bucket, cfg.s3Region, fileName),
+		fmt.Sprintf(
+			"https://%s.s3.%s.amazonaws.com/%s/%s",
+			cfg.s3Bucket,
+			cfg.s3Region,
+			aspectRatio,
+			fileName,
+		),
 	)
 
 	if err := cfg.db.UpdateVideo(video); err != nil {
