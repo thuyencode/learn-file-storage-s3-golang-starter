@@ -108,7 +108,7 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		fileExtensions[0],
 	)
 
-	tempFile, err := os.CreateTemp(os.TempDir(), fileName)
+	tempFile, err := os.CreateTemp("", fileName)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
 		return
@@ -146,13 +146,38 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	encodedFilePath, err := v.ProcessVideoForFastStart(tempFile.Name())
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+		return
+	}
+
+	encodedFile, err := os.Open(encodedFilePath)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+		return
+	}
+
+	defer func() {
+		if err := os.Remove(encodedFilePath); err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+		}
+	}()
+
+	defer func() {
+		if err := encodedFile.Close(); err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+			return
+		}
+	}()
+
 	s3ObjKey := new(path.Join(prefix, fileName))
 	if _, err := cfg.s3Client.PutObject(
 		context.Background(),
 		&s3.PutObjectInput{
 			Bucket:      &cfg.s3Bucket,
 			Key:         s3ObjKey,
-			Body:        tempFile,
+			Body:        encodedFile,
 			ContentType: &contentTypeHeader,
 		},
 	); err != nil {

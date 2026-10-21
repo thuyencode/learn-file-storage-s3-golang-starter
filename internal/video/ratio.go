@@ -34,10 +34,10 @@ func GetVideoAspectRatio(filePath string) (string, error) {
 		filePath,
 	)
 
-	var out bytes.Buffer
-	var errout strings.Builder
-	cmd.Stdout = &out
-	cmd.Stderr = &errout
+	out := new(bytes.Buffer)
+	errout := new(strings.Builder)
+	cmd.Stdout = out
+	cmd.Stderr = errout
 
 	if err := cmd.Run(); err != nil {
 		if errout.Len() != 0 {
