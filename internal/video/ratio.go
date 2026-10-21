@@ -18,8 +18,8 @@ var ErrInvalidData = errors.New("invalid data found when processing input")
 
 type FFProbeResult struct {
 	Streams []struct {
-		Width  int `json:"width,omitempty"`
-		Height int `json:"height,omitempty"`
+		Width  int `json:"width"`
+		Height int `json:"height"`
 	} `json:"streams"`
 }
 

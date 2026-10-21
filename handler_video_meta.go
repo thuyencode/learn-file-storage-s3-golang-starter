@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"sync"
 	"uuid"
 
 	"github.com/thuyencode/learn-file-storage-s3-golang-starter/internal/auth"
@@ -95,6 +96,12 @@ func (cfg *apiConfig) handlerVideoGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	video, err = cfg.dbVideoToSignedVideo(r.Context(), video)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+		return
+	}
+
 	respondWithJSON(w, http.StatusOK, video)
 }
 
@@ -114,6 +121,30 @@ func (cfg *apiConfig) handlerVideosRetrieve(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't retrieve videos", err)
 		return
+	}
+
+	var wg sync.WaitGroup
+	errc := make(chan error, len(videos))
+
+	for i, video := range videos {
+		wg.Go(func() {
+			video, err := cfg.dbVideoToSignedVideo(r.Context(), video)
+			if err != nil {
+				errc <- err
+			} else {
+				videos[i] = video
+			}
+		})
+	}
+
+	wg.Wait()
+	close(errc)
+
+	for err := range errc {
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+			return
+		}
 	}
 
 	respondWithJSON(w, http.StatusOK, videos)

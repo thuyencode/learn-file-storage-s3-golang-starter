@@ -171,12 +171,12 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		}
 	}()
 
-	s3ObjKey := new(path.Join(prefix, fileName))
-	if _, err := cfg.s3Client.PutObject(
+	s3ObjKey := path.Join(prefix, fileName)
+	if _, err = cfg.s3Client.PutObject(
 		context.Background(),
 		&s3.PutObjectInput{
 			Bucket:      &cfg.s3Bucket,
-			Key:         s3ObjKey,
+			Key:         &s3ObjKey,
 			Body:        encodedFile,
 			ContentType: &contentTypeHeader,
 		},
@@ -185,16 +185,14 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	video.VideoURL = new(
-		fmt.Sprintf(
-			"https://%s.s3.%s.amazonaws.com/%s",
-			cfg.s3Bucket,
-			cfg.s3Region,
-			*s3ObjKey,
-		),
-	)
+	video.VideoURL = new(fmt.Sprintf("%s,%s", cfg.s3Bucket, s3ObjKey))
+	if err = cfg.db.UpdateVideo(video); err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+		return
+	}
 
-	if err := cfg.db.UpdateVideo(video); err != nil {
+	video, err = cfg.dbVideoToSignedVideo(r.Context(), video)
+	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
 		return
 	}
